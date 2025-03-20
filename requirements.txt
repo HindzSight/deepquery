@@ -1,0 +1,5 @@
+streamlit
+PyPDF2
+sentence-transformers
+qdrant-client
+ollama
