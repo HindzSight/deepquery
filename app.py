@@ -6,6 +6,9 @@ from qdrant_client.models import Distance, VectorParams, PointStruct
 import ollama
 import os
 import time
+import spacy
+
+nlp = spacy.load("en_core_web_sm")
 
 # Initialize Qdrant client
 qdrant_client = QdrantClient("localhost", port=6333)
@@ -40,11 +43,21 @@ def pdf_read(pdf_doc):
     return text
 
 def get_chunks(text, chunk_size=1500, chunk_overlap=200):
-    words = text.split()
-    chunks = []
-    for i in range(0, len(words), chunk_size - chunk_overlap):
-        chunk = " ".join(words[i:i + chunk_size])
-        chunks.append(chunk)
+    doc = nlp(text)
+    sentences = [sent.text for sent in doc.sents]
+    
+    chunks, current_chunk, current_length = [], [], 0
+    for sentence in sentences:
+        sentence_length = len(sentence.split())
+        if current_length + sentence_length > chunk_size:
+            chunks.append(" ".join(current_chunk))
+            current_chunk = current_chunk[-chunk_overlap // 10:]  # Retain overlap
+            current_length = sum(len(sent.split()) for sent in current_chunk)
+        current_chunk.append(sentence)
+        current_length += sentence_length
+
+    if current_chunk:
+        chunks.append(" ".join(current_chunk))
     return chunks
 
 def vector_store(text_chunks):
